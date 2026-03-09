@@ -1,0 +1,154 @@
+// this represents an synchronous FIFO design
+
+module syn_fifo #(parameter width = 8, 
+                  parameter depth=8 )
+     (
+        input logic clk,
+        input logic rst,
+        input logic [width-1:0]data_in,
+        output logic [width-1:0]data_out,
+        output logic empty_a,
+        output logic  full_a,
+        input logic push,
+        input logic pop
+    );
+
+    logic[width-1:0] fifo_data[depth-1:0];
+
+        typedef enum logic [1:0] {
+            PUSH = 2'b10,
+            POP  = 2'b01,
+            BOTH = 2'b11
+        } state_t;
+
+
+    localparam PTR= $clog2(depth);
+
+    logic [PTR-1:0] wr_ptr;
+    logic [PTR-1:0] nxt_wr_ptr;
+    logic [PTR-1:0] rd_ptr;
+    logic [PTR-1:0] nxt_rd_ptr;
+
+
+    logic wrp_wr_ptr;
+    logic wrp_rd_ptr;
+    logic next_wrp_wr_ptr;
+    logic next_wrp_rd_ptr;
+
+
+    logic [width-1:0] fifo_temp_data;
+    logic [width-1:0] pop_temp_data;
+
+    //write the wrapped data types first then go fotr this two headlines
+    logic empty_a_temp;
+    logic full_a_temp;
+
+
+
+
+    always_ff @ (posedge clk or posedge rst)
+    begin
+        if(rst) begin 
+            wr_ptr <= PTR'(1'b0);
+            rd_ptr <= PTR'(1'b0);
+            wrp_rd_ptr <= 1'b0 ;
+            wrp_wr_ptr <= 1'b0 ;
+            
+        end else begin
+            wr_ptr<= nxt_wr_ptr;
+            rd_ptr<= nxt_rd_ptr;
+            wrp_wr_ptr<= next_wrp_wr_ptr;
+            wrp_rd_ptr<= next_wrp_rd_ptr;
+        end
+        
+    end
+
+
+    always_comb begin
+    
+     nxt_rd_ptr = rd_ptr;
+     nxt_wr_ptr = wr_ptr;
+     fifo_temp_data = fifo_data[wr_ptr];
+     pop_temp_data = fifo_data[rd_ptr];
+     next_wrp_rd_ptr = wrp_rd_ptr;
+     next_wrp_wr_ptr = wrp_wr_ptr;
+
+
+    case({push,pop})
+        
+            
+            PUSH: begin
+                fifo_temp_data = data_in;
+
+                if(wr_ptr == depth-1)begin
+                    nxt_wr_ptr= PTR'(1'b0);
+                    next_wrp_wr_ptr = ~wrp_wr_ptr;
+                end else begin
+                    nxt_wr_ptr = wr_ptr + PTR'(1'b1);
+                    
+                end
+            end
+
+            POP: begin
+                pop_temp_data = fifo_data[rd_ptr];
+                 if(rd_ptr == depth-1)begin
+                    nxt_rd_ptr= PTR'(1'b0);
+                    next_wrp_rd_ptr = ~wrp_rd_ptr;
+                end else begin
+                    nxt_rd_ptr = rd_ptr + PTR'(1'b1);
+                    
+                end
+            end
+            
+            BOTH: begin
+                fifo_temp_data = data_in;
+
+                if(wr_ptr == depth-1)begin
+                    nxt_wr_ptr= PTR'(1'b0);
+                    next_wrp_wr_ptr = ~wrp_wr_ptr;
+                end else begin
+                    nxt_wr_ptr = wr_ptr + PTR'(1'b1);
+                end
+
+                pop_temp_data = fifo_data[rd_ptr];
+                 if(rd_ptr == depth-1)begin
+                    nxt_rd_ptr= PTR'(1'b0);
+                    next_wrp_rd_ptr = ~wrp_rd_ptr;
+                end else begin
+                    nxt_rd_ptr = rd_ptr + PTR'(1'b1);
+                end
+            end
+            
+            default: begin    
+            nxt_rd_ptr = rd_ptr;
+            nxt_wr_ptr = wr_ptr;
+            fifo_temp_data = fifo_data[wr_ptr];
+              pop_temp_data = fifo_data[rd_ptr]; end
+            
+         endcase
+            
+        end
+            
+        
+
+
+            always_ff @(posedge clk)begin
+                fifo_data[wr_ptr]<= fifo_temp_data;
+             	 data_out <= pop_temp_data;
+              
+            end
+                
+
+        assign full_a_temp = (rd_ptr == wr_ptr) & (wrp_rd_ptr != wrp_wr_ptr);
+        assign empty_a_temp = (rd_ptr == wr_ptr) & (wrp_rd_ptr == wrp_wr_ptr);
+
+
+
+    assign empty_a= empty_a_temp;
+    assign full_a= full_a_temp;
+
+
+    
+    
+
+endmodule
