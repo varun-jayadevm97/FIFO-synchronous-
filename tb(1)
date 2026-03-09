@@ -1,0 +1,87 @@
+`timescale 1ns/1ps
+
+module syn_fifo_tb;
+
+parameter width = 8;
+parameter depth = 8;
+
+logic clk;
+logic rst;
+logic [width-1:0] data_in;
+logic [width-1:0] data_out;
+logic empty_a;
+logic full_a;
+logic push;
+logic pop;
+
+syn_fifo #(width,depth) dut (
+    .clk(clk),
+    .rst(rst),
+    .data_in(data_in),
+    .data_out(data_out),
+    .empty_a(empty_a),
+    .full_a(full_a),
+    .push(push),
+    .pop(pop)
+);
+
+always #5 clk = ~clk;
+
+initial begin
+    clk = 0;
+    rst = 1;
+    push = 0;
+    pop = 0;
+    data_in = 0;
+
+    #15 rst = 0;
+
+    push = 1;
+
+    repeat(8) begin
+        @(posedge clk);
+        data_in = $random;
+    end
+
+    @(posedge clk);
+    push = 0;
+
+
+    $display("FIFO should be FULL now");
+
+    pop = 1;
+
+    repeat(8) begin
+        @(posedge clk);
+    end
+
+    pop = 0;
+
+    $display("FIFO should be EMPTY now");
+
+    #20 $finish;
+end
+
+
+
+initial begin
+    $monitor("T=%0t push=%b pop=%b din=%h dout=%h full=%b empty=%b",
+              $time, push, pop, data_in, data_out, full_a, empty_a);
+end
+
+
+always @(posedge clk) begin
+    if(full_a)
+        $display("FIFO is FULL at time %0t", $time);
+
+    if(empty_a)
+        $display("FIFO is EMPTY at time %0t", $time);
+end
+  
+      initial begin
+      $dumpfile("syn_fifo.vcd");
+    $dumpvars(2,syn_fifo_tb );
+  end
+  
+
+endmodule
