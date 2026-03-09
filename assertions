@@ -1,0 +1,24 @@
+assert property (@(posedge clk) empty_a |-> !pop )
+else
+  $display("FIFO is empty presently");
+
+
+
+  assert property (@(posedge clk) full_a |-> !push )
+else
+  $display("FIFO is full presently");
+
+  assert property( @(posedge clk) rst |-> (wr_ptr==rd_ptr) );
+
+
+
+ assert property( @(posedge clk) rst |-> empty_a );
+
+
+ assert property (@(posedge clk)
+(wr_ptr == rd_ptr && wrp_wr_ptr == wrp_rd_ptr) |-> empty_a);
+
+
+
+ assert property (@(posedge clk)
+(wr_ptr == rd_ptr && wrp_wr_ptr == !wrp_rd_ptr) |-> full_a);
